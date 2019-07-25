@@ -455,7 +455,7 @@ bool initialize(bool wait = false)
 #if ENABLE_GPS
   // start serial communication with GPS receiver
   if (!state.check(STATE_GPS_READY)) {
-    Serial.print("GPS...");
+    Serial.print("GNSS...");
     if (sys.gpsBegin(GPS_SERIAL_BAUDRATE, false)) {
       state.set(STATE_GPS_READY);
       Serial.println("OK");
@@ -578,7 +578,7 @@ bool initialize(bool wait = false)
   if (state.check(STATE_NET_READY) && !state.check(STATE_NET_CONNECTED)) {
     Serial.print("NET...");
     bool extGPS = state.check(STATE_GPS_READY);
-    if (teleClient.net.setup(CELL_APN, !extGPS)) {
+    if (teleClient.net.setup(CELL_APN)) {
       String op = teleClient.net.getOperatorName();
       if (op.length()) {
         Serial.println(op);
@@ -591,7 +591,12 @@ bool initialize(bool wait = false)
 #endif
         Serial.println("OK");
       }
-      if (!extGPS) Serial.println("Cellular GNSS ON");
+
+      if (!extGPS) {
+        Serial.print("CELL GNSS...");
+        Serial.println(teleClient.net.setGPS(true) ? "OK" : "NO");
+      }
+
       Serial.print("IP...");
       String ip = teleClient.net.getIP();
       if (ip.length()) {
@@ -849,8 +854,6 @@ bool waitMotion(unsigned long timeout)
       }
     } while (millis() - t < timeout);
     return false;
-  } else {
-    delay(10000);
   }
 #endif
   if (timeout <= 10000) {
@@ -963,7 +966,6 @@ void process()
 
   if (connErrors >= MAX_CONN_ERRORS_RECONNECT) {
     if (teleClient.connect()) {
-      Serial.println("Reconnected");
       connErrors = 0;
     } else {
       // unable to reconnect
@@ -1300,12 +1302,11 @@ void setup()
     // show system information
     showSysInfo();
 
+#if ENABLE_OBD
     if (sys.begin()) {
-      Serial.print("Firmware: V");
+      Serial.print("Firmware: R");
       Serial.println(sys.version);
     }
-
-#if ENABLE_OBD
     obd.begin(sys.link);
 #endif
 
